@@ -65,10 +65,18 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
+      .filter((line) => {
+        // ignore not exists path
+        const realpath = line.replaceAll("//", "").replaceAll(" ", "");
+        const goworkFilePath = path.join(workspaceFolder, realpath);
+        const find = fs.existsSync(goworkFilePath);
+        return find;
+      })
       .map((line) => {
         const isComment = line.startsWith("//");
+        const rawLine = line.replaceAll("//", "").replaceAll(" ", "");
         return new GoworkItem(
-          line.replaceAll("//", "").replaceAll(" ", ""),
+          rawLine,
           vscode.TreeItemCollapsibleState.None,
           !isComment
         );
@@ -97,12 +105,15 @@ export class GoworkItem extends vscode.TreeItem {
 
   updateIconPath() {
     this.iconPath = this.checked
-      ? new vscode.ThemeIcon("check")
+      ? new vscode.ThemeIcon(
+          "check",
+          new vscode.ThemeColor("list.activeSelectionBackground")
+        )
       : new vscode.ThemeIcon("circle-outline");
   }
   updateResourceUri() {
     this.resourceUri = vscode.Uri.parse(
-      `gowork:/item${this.checked ? "?checked" : ""}`
+      `gowork:/${this.label}${this.checked ? "?checked" : ""}`
     );
   }
 

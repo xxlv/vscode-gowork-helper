@@ -2,11 +2,12 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import { GoWorkViewProvider, GoworkItem } from "./goworkView";
-import * as path from "path";
-import * as fs from "fs";
 import { modifyGoWorkFile } from "./util";
 
+vscode.commands.executeCommand("setContext", "goworkCondition", "1");
+
 export function activate(context: vscode.ExtensionContext) {
+  // vscode.commands.executeCommand("setContext", "goworkCondition", true);
   const decorationProvider = vscode.window.registerFileDecorationProvider({
     provideFileDecoration: (uri: vscode.Uri) => {
       console.log(uri.scheme);
@@ -15,10 +16,6 @@ export function activate(context: vscode.ExtensionContext) {
           backgroundColor: new vscode.ThemeColor(
             "list.activeSelectionBackground"
           ),
-          // backgroundColor: new vscode.ThemeColor(
-          //   "gowork.itemHighlightBackground"
-          // ),
-          // new vscode.ThemeColor('gowork.itemHighlightBackground')
           color: new vscode.ThemeColor("list.activeSelectionForeground"),
         };
       }
@@ -26,7 +23,6 @@ export function activate(context: vscode.ExtensionContext) {
     },
   });
   context.subscriptions.push(decorationProvider);
-
   const goworkViewProvider = new GoWorkViewProvider();
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("goworkView", goworkViewProvider)

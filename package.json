@@ -14,7 +14,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:goworkView"
+    "*"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -28,7 +28,8 @@
       "goworkContainer": [
         {
           "id": "goworkView",
-          "name": "Go Workspace😄"
+          "name": "Go Workspace",
+          "when": "workspaceFolderCount==1"
         }
       ]
     }
