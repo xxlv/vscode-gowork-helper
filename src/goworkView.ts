@@ -21,12 +21,10 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
 
   refresh(item?: GoworkItem): void {
     if (item) {
-      console.log(item);
       this._onDidChangeTreeData.fire(item);
     } else {
       this._onDidChangeTreeData.fire();
     }
-
     this.items = this.loadGoworkItems();
   }
 
@@ -72,6 +70,13 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
         };
         items.push(actionItem);
       }
+
+      this.items.sort((a, b) => {
+        if (a.checked === b.checked) {
+          return 0;
+        }
+        return a.checked ? -1 : 1;
+      });
       return Promise.resolve(items.concat(this.items));
     }
   }

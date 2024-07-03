@@ -98,6 +98,7 @@ export function activate(context: vscode.ExtensionContext) {
           if (item) {
             item.toggleCheck();
             goworkViewProvider.refresh(item);
+
             if (!item.isAction) {
               modifyGoWorkFile(item.label, item.checked);
             } else {
