@@ -38,7 +38,41 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
     if (element) {
       return Promise.resolve([]);
     } else {
-      return Promise.resolve(this.items);
+      const workspaceFolder = vscode.workspace.workspaceFolders
+        ? vscode.workspace.workspaceFolders[0].uri.fsPath
+        : "";
+      const goWorkPath = path.join(workspaceFolder, "go.work");
+      const goWorkDisabledPath = path.join(workspaceFolder, "go.work.disable");
+      const items = [];
+      const isAction = true;
+      if (fs.existsSync(goWorkPath)) {
+        const actionItem = new GoworkItem(
+          "CLOSE",
+          vscode.TreeItemCollapsibleState.None,
+          true,
+          isAction
+        );
+        actionItem.command = {
+          command: "gowork.toggleGoWorkAction",
+          title: "command Check",
+          arguments: [actionItem],
+        };
+        items.push(actionItem);
+      } else if (fs.existsSync(goWorkDisabledPath)) {
+        const actionItem = new GoworkItem(
+          "OPEN",
+          vscode.TreeItemCollapsibleState.None,
+          false,
+          isAction
+        );
+        actionItem.command = {
+          command: "gowork.toggleGoWorkAction",
+          title: "command Check",
+          arguments: [actionItem],
+        };
+        items.push(actionItem);
+      }
+      return Promise.resolve(items.concat(this.items));
     }
   }
 
@@ -52,7 +86,6 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
     try {
       goworkContent = fs.readFileSync(goworkFilePath, "utf-8");
     } catch (err) {
-      vscode.window.showErrorMessage(`Could not read go.work file: ${err}`);
       return [];
     }
 
@@ -78,7 +111,8 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
         return new GoworkItem(
           rawLine,
           vscode.TreeItemCollapsibleState.None,
-          !isComment
+          !isComment,
+          false
         );
       });
 
@@ -90,7 +124,8 @@ export class GoworkItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public checked: boolean
+    public checked: boolean,
+    public isAction: boolean
   ) {
     super(label, collapsibleState);
     this.contextValue = "goworkItem";
@@ -104,17 +139,28 @@ export class GoworkItem extends vscode.TreeItem {
   }
 
   updateIconPath() {
-    this.iconPath = this.checked
-      ? new vscode.ThemeIcon(
-          "check",
-          new vscode.ThemeColor("list.activeSelectionBackground")
-        )
-      : new vscode.ThemeIcon("circle-outline");
+    if (!this.isAction) {
+      this.iconPath = this.checked
+        ? new vscode.ThemeIcon(
+            "check",
+            new vscode.ThemeColor("list.activeSelectionBackground")
+          )
+        : new vscode.ThemeIcon("circle-outline");
+    } else {
+      this.iconPath = this.checked
+        ? new vscode.ThemeIcon(
+            "eye",
+            new vscode.ThemeColor("button.hoverBackground")
+          )
+        : new vscode.ThemeIcon("eye-closed");
+    }
   }
   updateResourceUri() {
-    this.resourceUri = vscode.Uri.parse(
-      `gowork:/${this.label}${this.checked ? "?checked" : ""}`
-    );
+    if (!this.isAction) {
+      this.resourceUri = vscode.Uri.parse(
+        `gowork:/${this.label}${this.checked ? "?checked" : ""}`
+      );
+    }
   }
 
   toggleCheck() {

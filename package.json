@@ -20,8 +20,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "gowork.toggleCheck",
-        "title": "Toggle Check"
+        "command": "gowork.refreshAction",
+        "title": "Gowork Refresh"
       }
     ],
     "views": {
