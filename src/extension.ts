@@ -80,6 +80,9 @@ export function activate(context: vscode.ExtensionContext) {
     fileWatcher.onDidDelete(() => {
       vscode.commands.executeCommand("gowork.refreshAction");
     });
+    fileWatcher.onDidChange(() => {
+      vscode.commands.executeCommand("gowork.refreshAction");
+    });
     context.subscriptions.push(fileWatcher);
 
     // --------------------------------------------------------------------------

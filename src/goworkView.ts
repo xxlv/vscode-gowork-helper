@@ -11,12 +11,59 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
     this._onDidChangeTreeData.event;
 
   private items: GoworkItem[];
+  private workspaceFolder: string | undefined;
+  private folderWatcher: vscode.FileSystemWatcher | undefined;
 
+  Open: string = "OPEN";
+  Close: string = "CLOSE";
   constructor() {
     // read current project `go.work` file
     // convert to this items array
     // if comment ,then false, else true
     this.items = this.loadGoworkItems();
+    this.workspaceFolder = vscode.workspace.workspaceFolders
+      ? vscode.workspace.workspaceFolders[0].uri.fsPath
+      : undefined;
+    this.refreshItems();
+    if (this.workspaceFolder) {
+      this.folderWatcher = vscode.workspace.createFileSystemWatcher(
+        path.join(this.workspaceFolder, "*")
+      );
+      // TODO on change
+      this.folderWatcher.onDidCreate((uri) => {
+        const newFolderName = path.basename(uri.fsPath);
+        if (!this.items.some((item) => item.label === newFolderName)) {
+          this.items.push(
+            new GoworkItem(
+              newFolderName,
+              vscode.TreeItemCollapsibleState.None,
+              false, // Adjust the checked status as needed
+              false,
+              false
+            )
+          );
+          this._onDidChangeTreeData.fire();
+        }
+      });
+
+      this.folderWatcher.onDidDelete((uri) => {
+        const deletedFolderName = path.basename(uri.fsPath);
+        const index = this.items.findIndex(
+          (item) => item.label === deletedFolderName
+        );
+        if (index !== -1) {
+          this.items.splice(index, 1);
+          this._onDidChangeTreeData.fire();
+        }
+      });
+    }
+  }
+
+  private refreshItems(): void {
+    if (this.workspaceFolder) {
+      this.items = this.loadGoworkItems();
+      this._onDidChangeTreeData.fire();
+    }
   }
 
   refresh(item?: GoworkItem): void {
@@ -45,10 +92,11 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
       const isAction = true;
       if (fs.existsSync(goWorkPath)) {
         const actionItem = new GoworkItem(
-          "CLOSE",
+          this.Close,
           vscode.TreeItemCollapsibleState.None,
           true,
-          isAction
+          isAction,
+          false
         );
         actionItem.command = {
           command: "gowork.toggleGoWorkAction",
@@ -58,10 +106,11 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
         items.push(actionItem);
       } else if (fs.existsSync(goWorkDisabledPath)) {
         const actionItem = new GoworkItem(
-          "OPEN",
+          this.Open,
           vscode.TreeItemCollapsibleState.None,
           false,
-          isAction
+          isAction,
+          false
         );
         actionItem.command = {
           command: "gowork.toggleGoWorkAction",
@@ -93,35 +142,58 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
     } catch (err) {
       return [];
     }
-
+    let items: GoworkItem[] = [];
     const useSection = extractUseSection(goworkContent);
-    if (!useSection) {
-      return [];
+    if (useSection) {
+      items = useSection
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .filter((line) => {
+          // ignore not exists path
+          const realpath = line.replaceAll("//", "").replaceAll(" ", "");
+          const goworkFilePath = path.join(workspaceFolder, realpath);
+          const find = fs.existsSync(goworkFilePath);
+          return find;
+        })
+        .map((line) => {
+          const isComment = line.startsWith("//");
+          const rawLine = line.replaceAll("//", "").replaceAll(" ", "");
+          return new GoworkItem(
+            rawLine.replaceAll("./", ""),
+            vscode.TreeItemCollapsibleState.None,
+            !isComment,
+            false,
+            true // in go.work
+          );
+        });
     }
 
-    const items = useSection
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .filter((line) => {
-        // ignore not exists path
-        const realpath = line.replaceAll("//", "").replaceAll(" ", "");
-        const goworkFilePath = path.join(workspaceFolder, realpath);
-        const find = fs.existsSync(goworkFilePath);
-        return find;
-      })
-      .map((line) => {
-        const isComment = line.startsWith("//");
-        const rawLine = line.replaceAll("//", "").replaceAll(" ", "");
-        return new GoworkItem(
-          rawLine,
-          vscode.TreeItemCollapsibleState.None,
-          !isComment,
-          false
+    const firstLevelSubDirectories = fs
+      .readdirSync(workspaceFolder, { withFileTypes: true })
+      .filter((dirent) => dirent.isDirectory())
+      .map((dirent) => dirent.name);
+    const additionalItems = firstLevelSubDirectories
+      .filter((dir) => {
+        const fullPath = path.join(workspaceFolder, dir);
+        const goModPath = path.join(fullPath, "go.mod");
+        return (
+          fs.existsSync(goModPath) &&
+          !items.some((item) => item.label.includes(dir))
         );
-      });
+      })
+      .map(
+        (dir) =>
+          new GoworkItem(
+            dir,
+            vscode.TreeItemCollapsibleState.None,
+            false,
+            false,
+            false // not in go.work
+          )
+      );
 
-    return items;
+    return [...items, ...additionalItems];
   }
 }
 
@@ -130,9 +202,11 @@ export class GoworkItem extends vscode.TreeItem {
     public readonly label: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     public checked: boolean,
-    public isAction: boolean
+    public isAction: boolean,
+    public inWorkfile: boolean // if current item is in go.work
   ) {
     super(label, collapsibleState);
+
     this.contextValue = "goworkItem";
     this.command = {
       command: "gowork.toggleCheck",
