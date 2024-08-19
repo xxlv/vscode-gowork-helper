@@ -8,10 +8,6 @@ function modifyGoWorkFile(label: string, checked: boolean) {
     vscode.window.showErrorMessage("only single workspace required!");
     return;
   }
-
-  //TODO: i want change this workspaceFoldworkspaceFolderer's dir icon
-  // label is dir name where live in workspaceFolder
-
   const workspaceFolder = workspaceFolders[0].uri.fsPath;
   const goworkFilePath = path.join(workspaceFolder, "go.work");
   fs.readFile(goworkFilePath, "utf-8", (err, data) => {
@@ -161,12 +157,6 @@ function modifyUseSection(
         ")"
       );
     }
-
-    // 将当前lines 位置的use 行删除
-    // 取而代之 新增三行
-    // 增加 use (
-    // 增加  ...singleUseArr
-    // 增加 )
   }
   return lines.join("\n");
 }

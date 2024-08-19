@@ -29,20 +29,28 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
       this.folderWatcher = vscode.workspace.createFileSystemWatcher(
         path.join(this.workspaceFolder, "*")
       );
-      // TODO on change
       this.folderWatcher.onDidCreate((uri) => {
-        const newFolderName = path.basename(uri.fsPath);
-        if (!this.items.some((item) => item.label === newFolderName)) {
-          this.items.push(
-            new GoworkItem(
-              newFolderName,
-              vscode.TreeItemCollapsibleState.None,
-              false, // Adjust the checked status as needed
-              false,
-              false
-            )
-          );
-          this._onDidChangeTreeData.fire();
+        // when change go.work to go.work.disable or create new dir
+        // we need makesure the dir is go project
+        // here simple check go.mod file
+        const newFolderPath = uri.fsPath;
+        const newFolderName = path.basename(newFolderPath);
+        if (fs.statSync(newFolderPath).isDirectory()) {
+          const goModPath = path.join(newFolderPath, "go.mod");
+          if (fs.existsSync(goModPath)) {
+            if (!this.items.some((item) => item.label === newFolderName)) {
+              this.items.push(
+                new GoworkItem(
+                  newFolderName,
+                  vscode.TreeItemCollapsibleState.None,
+                  false,
+                  false,
+                  false
+                )
+              );
+              this._onDidChangeTreeData.fire();
+            }
+          }
         }
       });
 
@@ -64,6 +72,11 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
       this.items = this.loadGoworkItems();
       this._onDidChangeTreeData.fire();
     }
+  }
+
+  public fullRefresh(): void {
+    this.items = this.loadGoworkItems();
+    this._onDidChangeTreeData.fire();
   }
 
   refresh(item?: GoworkItem): void {
@@ -130,6 +143,7 @@ export class GoWorkViewProvider implements vscode.TreeDataProvider<GoworkItem> {
     }
   }
 
+  // Local projects
   private loadGoworkItems(): GoworkItem[] {
     const workspaceFolder = vscode.workspace.workspaceFolders
       ? vscode.workspace.workspaceFolders[0].uri.fsPath

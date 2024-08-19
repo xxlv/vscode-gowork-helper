@@ -11,6 +11,7 @@ vscode.commands.executeCommand("setContext", "goworkCondition", "1");
 export function activate(context: vscode.ExtensionContext) {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
 
+  console.log(workspaceFolder);
   if (workspaceFolder) {
     // --------------------------------------------------------------------------
     // checked color
@@ -53,7 +54,7 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage("go.work disabled");
           }
         }
-        goworkViewProvider.refresh();
+        goworkViewProvider.fullRefresh();
       }
     );
     context.subscriptions.push(toggleCommand);
@@ -116,5 +117,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-  console.log("gowork deactivate");
+  console.log("gowork deactivate!");
 }
